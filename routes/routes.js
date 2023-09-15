@@ -166,11 +166,11 @@ router.get("/compras/totalVentasProv", async (req, res) => {
       .project(projection)
       .toArray();
 
-      const sumatoria = (element) => {
-        return element.reduce((total, medicamento) => {
-          return total + medicamento.medicamentosComprados[0].cantidadComprada;
-        }, 0);
-      };
+    const sumatoria = (element) => {
+      return element.reduce((total, medicamento) => {
+        return total + medicamento.medicamentosComprados[0].cantidadComprada;
+      }, 0);
+    };
 
     res.json({
       ProveedorA: sumatoria(resultA),
@@ -276,10 +276,10 @@ router.get("/medicamentos/maxCost", async (req, res) => {
     const db = client.db(nombreBase);
     const colection = db.collection("Medicamentos");
 
-
     const result = await colection
       .find({})
-      .sort({precio:-1}).limit(1)
+      .sort({ precio: -1 })
+      .limit(1)
       .toArray();
 
     res.json(result);
@@ -330,31 +330,90 @@ router.get("/compras/vendidosPorProveedor", async (req, res) => {
 
 router.get("/ventas/pacientes", async (req, res) => {
   try {
-    const {buy} = req.query
+    const { buy } = req.query;
+    const client = new MongoClient(bases);
+    await client.connect();
+    const db = client.db(nombreBase);
+    const colection = db.collection("Ventas");
+
+    const result = await colection
+      .find({
+        medicamentosVendidos: {
+          $elemMatch: { nombreMedicamento: buy },
+        },
+      })
+      .toArray();
+
+    res.json(result);
+    client.close();
+  } catch (error) {
+    console.log(error);
+    res.status(404).json("No se reconoce el dato");
+  }
+});
+
+//13. Proveedores que no han vendido medicamentos en el último año.
+
+router.get("/compras/noVentas/actual", async (req, res) => {
+  try {
     const client = new MongoClient(bases);
     await client.connect();
     const db = client.db(nombreBase);
     const colection = db.collection("Compras");
+    const colection2 = db.collection("Proveedores");
 
-    const projection = { medicamentosComprados: 1 };
+    const fechaActual = new Date();
+    const anoPasado = new Date();
+    anoPasado.setFullYear(anoPasado.getFullYear() - 1);
 
-    const resultA = await colection
-      .find({ "proveedor.nombre": "ProveedorA" })
-      .project(projection)
+    const resultFecha = await colection.distinct("proveedor.nombre", {
+      fechaCompra: { $gte: anoPasado, $lt: fechaActual },
+    });
+
+    const result = await colection2
+      .find({
+        nombre: { $nin: resultFecha },
+      })
       .toArray();
-    const resultB = await colection
-      .find({ "proveedor.nombre": "ProveedorB" })
-      .project(projection)
-      .toArray();
-    const resultC = await colection
-      .find({ "proveedor.nombre": "ProveedorC" })
-      .project(projection)
-      .toArray();
+
+    res.json(result);
+    client.close();
+  } catch (error) {
+    console.log(error);
+    res.status(404).json("No se reconoce el dato");
+  }
+});
+
+//14. Obtener el total de medicamentos vendidos en marzo de 2023.
+
+router.get("/ventas/fecha", async (req, res) => {
+  try {
+    const { ano, mes } = req.query
+
+    const inicioMes = new Date(`${ano}-${mes}`)
+    const finMes = new Date(`${ano}-${mes}`)
+    finMes.setMonth(finMes.getMonth() + 1)
+
+    const client = new MongoClient(bases);
+    await client.connect();
+    const db = client.db(nombreBase);
+    const colection = db.collection("Ventas");
+
+
+    const resultFecha = await colection.find({
+      fechaVenta: { $gte: inicioMes, $lt: finMes },
+    }).toArray()
+
+    let indexCount = 0
+    const result = resultFecha.map(ele=> {
+      ele.medicamentosVendidos.forEach(count =>{
+         indexCount += count.cantidadVendida
+      })
+      return indexCount
+    })
 
     res.json({
-      ProveedorA: resultA,
-      ProveedorB: resultB,
-      ProveedorC: resultC,
+      CantidadVendida: result[0]
     });
     client.close();
   } catch (error) {

@@ -48,7 +48,7 @@ http://localhost:6000/test/ventas/pacientes/?buy=Paracetamol
 
 13. Proveedores que no han vendido medicamentos en el último año.
 
-
+http://localhost:6000/test/compras/noVentas/actual
 
 14. Obtener el total de medicamentos vendidos en marzo de 2023.
 
