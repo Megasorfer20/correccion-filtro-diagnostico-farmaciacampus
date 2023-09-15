@@ -144,14 +144,14 @@ router.get("/medicamentos/caducidad/antes", async (req, res) => {
 
 //7. Total de medicamentos vendidos por cada proveedor.
 
-router.get("/compras/vendidosPorProveedor", async (req, res) => {
+router.get("/compras/totalVentasProv", async (req, res) => {
   try {
     const client = new MongoClient(bases);
     await client.connect();
     const db = client.db(nombreBase);
     const colection = db.collection("Compras");
 
-    const projection = { medicamentosComprados: 1 };
+    const projection = { "medicamentosComprados.cantidadComprada": 1 };
 
     const resultA = await colection
       .find({ "proveedor.nombre": "ProveedorA" })
@@ -166,10 +166,16 @@ router.get("/compras/vendidosPorProveedor", async (req, res) => {
       .project(projection)
       .toArray();
 
+      const sumatoria = (element) => {
+        return element.reduce((total, medicamento) => {
+          return total + medicamento.medicamentosComprados[0].cantidadComprada;
+        }, 0);
+      };
+
     res.json({
-      ProveedorA: resultA,
-      ProveedorB: resultB,
-      ProveedorC: resultC,
+      ProveedorA: sumatoria(resultA),
+      ProveedorB: sumatoria(resultB),
+      ProveedorC: sumatoria(resultC),
     });
     client.close();
   } catch (error) {
@@ -254,6 +260,102 @@ router.get("/ventas/medicamentosSinVender", async (req, res) => {
     });
 
     res.json(result);
+    client.close();
+  } catch (error) {
+    console.log(error);
+    res.status(404).json("No se reconoce el dato");
+  }
+});
+
+//10. Obtener el medicamento más caro.
+
+router.get("/medicamentos/maxCost", async (req, res) => {
+  try {
+    const client = new MongoClient(bases);
+    await client.connect();
+    const db = client.db(nombreBase);
+    const colection = db.collection("Medicamentos");
+
+
+    const result = await colection
+      .find({})
+      .sort({precio:-1}).limit(1)
+      .toArray();
+
+    res.json(result);
+    client.close();
+  } catch (error) {
+    console.log(error);
+    res.status(404).json("No se reconoce el dato");
+  }
+});
+
+//11. Número de medicamentos por proveedor.
+
+router.get("/compras/vendidosPorProveedor", async (req, res) => {
+  try {
+    const client = new MongoClient(bases);
+    await client.connect();
+    const db = client.db(nombreBase);
+    const colection = db.collection("Compras");
+
+    const projection = { medicamentosComprados: 1 };
+
+    const resultA = await colection
+      .find({ "proveedor.nombre": "ProveedorA" })
+      .project(projection)
+      .toArray();
+    const resultB = await colection
+      .find({ "proveedor.nombre": "ProveedorB" })
+      .project(projection)
+      .toArray();
+    const resultC = await colection
+      .find({ "proveedor.nombre": "ProveedorC" })
+      .project(projection)
+      .toArray();
+
+    res.json({
+      ProveedorA: resultA,
+      ProveedorB: resultB,
+      ProveedorC: resultC,
+    });
+    client.close();
+  } catch (error) {
+    console.log(error);
+    res.status(404).json("No se reconoce el dato");
+  }
+});
+
+//12. Pacientes que han comprado Paracetamol.
+
+router.get("/ventas/pacientes", async (req, res) => {
+  try {
+    const {buy} = req.query
+    const client = new MongoClient(bases);
+    await client.connect();
+    const db = client.db(nombreBase);
+    const colection = db.collection("Compras");
+
+    const projection = { medicamentosComprados: 1 };
+
+    const resultA = await colection
+      .find({ "proveedor.nombre": "ProveedorA" })
+      .project(projection)
+      .toArray();
+    const resultB = await colection
+      .find({ "proveedor.nombre": "ProveedorB" })
+      .project(projection)
+      .toArray();
+    const resultC = await colection
+      .find({ "proveedor.nombre": "ProveedorC" })
+      .project(projection)
+      .toArray();
+
+    res.json({
+      ProveedorA: resultA,
+      ProveedorB: resultB,
+      ProveedorC: resultC,
+    });
     client.close();
   } catch (error) {
     console.log(error);

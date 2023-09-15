@@ -24,7 +24,7 @@ http://localhost:6000/test/medicamentos/caducidad/antes/?fecha=2024-01-01
 
 7. Total de medicamentos vendidos por cada proveedor.
 
-http://localhost:6000/test/ventas/vendidosPorProveedor
+http://localhost:6000/test/compras/totalVentasProv
 
 8. Cantidad total de dinero recaudado por las ventas de medicamentos.
 
@@ -40,7 +40,7 @@ http://localhost:6000/test/medicamentos/maxCost
 
 11. Número de medicamentos por proveedor.
 
-
+http://localhost:6000/test/compras/vendidosPorProveedor
 
 12. Pacientes que han comprado Paracetamol.
 
