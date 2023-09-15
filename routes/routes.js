@@ -47,6 +47,8 @@ router.get("/medicamentos/proveedores", async (req, res) => {
   }
 });
 
+//3. Medicamentos comprados al ‘Proveedor A’.
+
 router.get("/medicamentos/compras", async (req, res) => {
   try {
     const { prov } = req.query;
@@ -70,17 +72,19 @@ router.get("/medicamentos/compras", async (req, res) => {
   }
 });
 
+//4. Obtener recetas médicas emitidas después del 1 de enero de 2023.
+
 router.get("/ventas/recetasMedicas/despues", async (req, res) => {
   try {
     const { fecha } = req.query;
-    const fechaCompare =new Date(fecha)
+    const fechaCompare = new Date(fecha);
     const client = new MongoClient(bases);
     await client.connect();
     const db = client.db(nombreBase);
     const colection = db.collection("Ventas");
 
     const result = await colection
-      .find({fechaVenta: {$gte:fechaCompare}})
+      .find({ fechaVenta: { $gte: fechaCompare } })
       .toArray();
     res.json(result);
     client.close();
@@ -90,17 +94,45 @@ router.get("/ventas/recetasMedicas/despues", async (req, res) => {
   }
 });
 
+//5. Total de ventas del medicamento ‘Paracetamol’.
+
+router.get("/ventas/medicamento", async (req, res) => {
+  try {
+    const { med } = req.query;
+    const client = new MongoClient(bases);
+    await client.connect();
+    const db = client.db(nombreBase);
+    const colection = db.collection("Ventas");
+
+    const result = await colection
+      .find({
+        medicamentosVendidos: {
+          $elemMatch: { nombreMedicamento: med },
+        },
+      })
+      .toArray();
+
+    res.json(result);
+    client.close();
+  } catch (error) {
+    console.log(error);
+    res.status(404).json("No se reconoce el dato");
+  }
+});
+
+//6. Medicamentos que caducan antes del 1 de enero de 2024.
+
 router.get("/medicamentos/caducidad/antes", async (req, res) => {
   try {
     const { fecha } = req.query;
-    const fechaCompare =new Date(fecha)
+    const fechaCompare = new Date(fecha);
     const client = new MongoClient(bases);
     await client.connect();
     const db = client.db(nombreBase);
     const colection = db.collection("Medicamentos");
 
     const result = await colection
-      .find({fechaExpiracion: {$lte:fechaCompare}})
+      .find({ fechaExpiracion: { $lte: fechaCompare } })
       .toArray();
     res.json(result);
     client.close();
@@ -110,9 +142,74 @@ router.get("/medicamentos/caducidad/antes", async (req, res) => {
   }
 });
 
+//7. Total de medicamentos vendidos por cada proveedor.
+
+router.get("/compras/vendidosPorProveedor", async (req, res) => {
+  try {
+    const client = new MongoClient(bases);
+    await client.connect();
+    const db = client.db(nombreBase);
+    const colection = db.collection("Compras");
+
+    const projection = { medicamentosComprados: 1 };
+
+    const resultA = await colection
+      .find({ "proveedor.nombre": "ProveedorA" })
+      .project(projection)
+      .toArray();
+    const resultB = await colection
+      .find({ "proveedor.nombre": "ProveedorB" })
+      .project(projection)
+      .toArray();
+    const resultC = await colection
+      .find({ "proveedor.nombre": "ProveedorC" })
+      .project(projection)
+      .toArray();
+
+    res.json({
+      ProveedorA: resultA,
+      ProveedorB: resultB,
+      ProveedorC: resultC,
+    });
+    client.close();
+  } catch (error) {
+    console.log(error);
+    res.status(404).json("No se reconoce el dato");
+  }
+});
+
+//8. Cantidad total de dinero recaudado por las ventas de medicamentos.
+
+router.get("/ventas/reacudacion", async (req, res) => {
+  try {
+    const client = new MongoClient(bases);
+    await client.connect();
+    const db = client.db(nombreBase);
+    const colection = db.collection("Ventas");
+
+    const projection = { medicamentosVendidos: 1 };
+
+    const conectionCol = await colection.find({}).project(projection).toArray();
+
+    let conteo = 0;
+    const result = conectionCol.forEach((element) => {
+      element.medicamentosVendidos.forEach((el) => {
+        conteo = conteo + el.precio;
+      });
+    });
+    res.json({ DineroRecaudado: conteo });
+    client.close();
+  } catch (error) {
+    console.log(error);
+    res.status(404).json("No se reconoce el dato");
+  }
+});
+
+//38. Medicamentos con un precio mayor a 50 y un stock menor a 100.
+
 router.get("/medicamentos/filter", async (req, res) => {
   try {
-    const { maxPrice,stock } = req.query;
+    const { maxPrice, stock } = req.query;
     const client = new MongoClient(bases);
     await client.connect();
     const db = client.db(nombreBase);
@@ -122,7 +219,9 @@ router.get("/medicamentos/filter", async (req, res) => {
       .find({ stock: { $lte: Number(stock) } })
       .toArray();
 
-    const result = filterStock.filter(element => element.stock >= Number(maxPrice))
+    const result = filterStock.filter(
+      (element) => element.stock >= Number(maxPrice)
+    );
     res.json(result);
     client.close();
   } catch (error) {

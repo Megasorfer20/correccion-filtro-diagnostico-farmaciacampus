@@ -16,7 +16,7 @@ http://localhost:6000/test/ventas/recetasMedicas/despues/?fecha=2023-01-01
 
 5. Total de ventas del medicamento ‘Paracetamol’.
 
-
+http://localhost:6000/test/ventas/medicamento/?med=Paracetamol
 
 6. Medicamentos que caducan antes del 1 de enero de 2024.
 
@@ -24,7 +24,7 @@ http://localhost:6000/test/medicamentos/caducidad/antes/?fecha=2024-01-01
 
 7. Total de medicamentos vendidos por cada proveedor.
 
-
+http://localhost:6000/test/ventas/vendidosPorProveedor
 
 8. Cantidad total de dinero recaudado por las ventas de medicamentos.
 

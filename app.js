@@ -6,13 +6,11 @@ dotenv.config();
 
 const port = process.env.PORT;
 const app = express();
-const mainRouter = router
+const mainRouter = router;
 
-app.use('/test',mainRouter)
-app.use(express.json())
+app.use("/test", mainRouter);
+app.use(express.json());
 
-app.listen(port,()=>{
-    console.log('Hola a todos');
-})
-
-
+app.listen(port, () => {
+  console.log(`Conectado al puerto ${port}`);
+});
