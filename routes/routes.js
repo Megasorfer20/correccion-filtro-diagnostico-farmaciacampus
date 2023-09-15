@@ -205,6 +205,62 @@ router.get("/ventas/reacudacion", async (req, res) => {
   }
 });
 
+//9. Medicamentos que no han sido vendidos.
+
+router.get("/ventas/medicamentosSinVender", async (req, res) => {
+  try {
+    const client = new MongoClient(bases);
+    await client.connect();
+    const db = client.db(nombreBase);
+    const colection = db.collection("Medicamentos");
+    const colection2 = db.collection("Ventas");
+
+    const medicamentosVendidos = await colection2
+      .aggregate([
+        {
+          $unwind: "$medicamentosVendidos",
+        },
+        {
+          $group: {
+            _id: "$medicamentosVendidos.nombreMedicamento",
+            totalCantidadVendida: {
+              $sum: "$medicamentosVendidos.cantidadVendida",
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            nombreMedicamento: "$_id",
+            totalCantidadVendida: 1,
+          },
+        },
+      ])
+      .toArray();
+
+    const medsInStock = await colection
+      .find({})
+      .project({ nombre: 1, stock: 1 })
+      .toArray();
+
+    const result = medsInStock.map((element) => {
+      const medicamentoVendido = medicamentosVendidos.find(
+        (med) => med.nombreMedicamento === element.nombre
+      );
+      if (medicamentoVendido) {
+        element.stock -= medicamentoVendido.totalCantidadVendida;
+      }
+      return element;
+    });
+
+    res.json(result);
+    client.close();
+  } catch (error) {
+    console.log(error);
+    res.status(404).json("No se reconoce el dato");
+  }
+});
+
 //38. Medicamentos con un precio mayor a 50 y un stock menor a 100.
 
 router.get("/medicamentos/filter", async (req, res) => {

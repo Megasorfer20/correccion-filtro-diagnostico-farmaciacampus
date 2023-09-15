@@ -28,11 +28,11 @@ http://localhost:6000/test/ventas/vendidosPorProveedor
 
 8. Cantidad total de dinero recaudado por las ventas de medicamentos.
 
-
+http://localhost:6000/test/ventas/reacudacion
 
 9. Medicamentos que no han sido vendidos.
 
-
+http://localhost:6000/test/ventas/medicamentosSinVender
 
 10. Obtener el medicamento más caro.
 
