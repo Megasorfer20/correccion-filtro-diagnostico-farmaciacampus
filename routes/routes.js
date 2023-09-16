@@ -617,19 +617,22 @@ router.get("/ventas/ventasPorEmpleadoAll", async (req, res) => {
       ])
       .toArray();
 
-    const empleados = await colection2.find({}).project({
-      _id:0,
-      nombre: 1,
-    }).toArray();
-
-empleados.forEach(element=>{
-      element.ventasHechas = 0
-        ventasEmpleados.forEach(el=>{
-          if(el.proveedor === element.nombre){
-            element.ventasHechas = el.ventasHechas
-          }
-        })
+    const empleados = await colection2
+      .find({})
+      .project({
+        _id: 0,
+        nombre: 1,
       })
+      .toArray();
+
+    empleados.forEach((element) => {
+      element.ventasHechas = 0;
+      ventasEmpleados.forEach((el) => {
+        if (el.proveedor === element.nombre) {
+          element.ventasHechas = el.ventasHechas;
+        }
+      });
+    });
 
     res.json(empleados);
     client.close();
@@ -656,7 +659,7 @@ router.get("/medicamentos/cadudidad/ByYear", async (req, res) => {
     const colection = db.collection("Medicamentos");
 
     const result = await colection
-      .find({ fechaExpiracion: { $gte: anoActal, $lt:anoLimite } })
+      .find({ fechaExpiracion: { $gte: anoActal, $lt: anoLimite } })
       .toArray();
     res.json(result);
     client.close();
@@ -665,7 +668,6 @@ router.get("/medicamentos/cadudidad/ByYear", async (req, res) => {
     res.status(404).json("No se reconoce el dato");
   }
 });
-
 
 //20. Empleados que hayan hecho más de 5 ventas en total.
 
@@ -714,6 +716,248 @@ router.get("/ventas/ventasPorEmpleado", async (req, res) => {
     res.status(404).json("No se reconoce el dato");
   }
 });
+
+//21. Medicamentos que no han sido vendidos nunca.
+
+router.get("/ventas/medicamentosSinVender/Never", async (req, res) => {
+  try {
+    const client = new MongoClient(bases);
+    await client.connect();
+    const db = client.db(nombreBase);
+    const colection = db.collection("Medicamentos");
+    const colection2 = db.collection("Ventas");
+
+    const medicamentosVendidos = await colection2.distinct(
+      "medicamentosVendidos.nombreMedicamento"
+    );
+
+    const medsInStock = await colection
+      .find({
+        nombre: { $nin: medicamentosVendidos },
+      })
+      .toArray();
+
+    res.json(medsInStock);
+    client.close();
+  } catch (error) {
+    console.log(error);
+    res.status(404).json("No se reconoce el dato");
+  }
+});
+
+//22. Paciente que ha gastado más dinero en 2023.
+
+router.get("/ventas/gastosPacientes", async (req, res) => {
+  try {
+    const { ano } = req.query;
+
+    const anoActal = new Date(ano);
+    const anoLimite = new Date(ano);
+
+    anoLimite.setFullYear(anoLimite.getFullYear() + 1);
+
+    const client = new MongoClient(bases);
+    await client.connect();
+    const db = client.db(nombreBase);
+    const colection = db.collection("Ventas");
+
+    const result = await colection
+      .aggregate([
+        {
+          $unwind: "$medicamentosVendidos",
+        },
+        {
+          $group: {
+            _id: "$paciente.nombre",
+            gastosTotales: {
+              $sum: {
+                $multiply: [
+                  "$medicamentosVendidos.cantidadVendida",
+                  "$medicamentosVendidos.precio",
+                ],
+              },
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            proveedor: "$_id",
+            gastosTotales: 1,
+          },
+        },
+        {
+          $sort: {
+            gastosTotales: -1,
+          },
+        },
+        { $limit: 1 },
+      ])
+      .toArray();
+
+    res.json(result);
+    client.close();
+  } catch (error) {
+    console.log(error);
+    res.status(404).json("No se reconoce el dato");
+  }
+});
+
+//23. Empleados que no han realizado ninguna venta en 2023.
+
+router.get("/ventas/empleadosSinVentas", async (req, res) => {
+  try {
+    const { ano } = req.query;
+
+    const anoActual = new Date(ano);
+    const anoLimite = new Date(ano);
+
+    anoLimite.setFullYear(anoLimite.getFullYear() + 1);
+
+    const client = new MongoClient(bases);
+    await client.connect();
+    const db = client.db(nombreBase);
+    const colection = db.collection("Ventas");
+    const colection2 = db.collection("Empleados");
+
+    const empleadosConVentas = await colection
+      .aggregate([
+        {
+          $match: {
+            fechaVenta: { $gte: anoActual, $lt: anoLimite },
+          },
+        },
+        {
+          $group: {
+            _id: "$empleado.nombre",
+          },
+        },
+      ])
+      .toArray();
+
+    const empleados = await colection2
+      .find({})
+      .project({
+        _id: 0,
+        nombre: 1,
+      })
+      .toArray();
+
+    const empleadosConVentasSet = new Set(
+      empleadosConVentas.map((empleado) => empleado._id)
+    );
+
+    const empleadosSinVentas = empleados.filter(
+      (empleado) => !empleadosConVentasSet.has(empleado.nombre)
+    );
+
+    res.json(empleadosSinVentas);
+    client.close();
+  } catch (error) {
+    console.log(error);
+    res.status(404).json("No se reconoce el dato");
+  }
+});
+
+//24. Proveedor que ha suministrado más medicamentos en 2023.
+
+router.get("/compras/suministroProveedor", async (req, res) => {
+  try {
+    const { ano } = req.query;
+
+    const anoActal = new Date(ano);
+    const anoLimite = new Date(ano);
+
+    anoLimite.setFullYear(anoLimite.getFullYear() + 1);
+
+    const client = new MongoClient(bases);
+    await client.connect();
+    const db = client.db(nombreBase);
+    const colection = db.collection("Compras");
+
+    const result = await colection
+      .aggregate([
+        {
+          $match: {
+            fechaCompra: { $gte: anoActal, $lt: anoLimite },
+          },
+        },
+        {
+          $unwind: "$medicamentosComprados",
+        },
+        {
+          $group: {
+            _id: "$proveedor.nombre",
+            medicamentoVendido: {
+              $push: {
+                nombreMedicamento: "$medicamentosComprados.nombreMedicamento",
+                cantidadVendida: {
+                  $sum: "$medicamentosComprados.cantidadComprada",
+                },
+              },
+            },
+          },
+        },
+        {
+          $unwind: "$medicamentoVendido",
+        },
+        {
+          $group: {
+            _id: "$_id",
+            proveedor: { $first: "$_id" },
+            medicamentoVendido: { $push: "$medicamentoVendido" },
+            totalVentas: { $sum: "$medicamentoVendido.cantidadVendida" },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            proveedor: 1,
+            medicamentoVendido: 1,
+          },
+        },
+        {
+          $sort: {
+            totalVentas: -1,
+          },
+        },
+        { $limit: 1 },
+      ])
+      .toArray();
+
+    res.json(result);
+    client.close();
+  } catch (error) {
+    console.log(error);
+    res.status(404).json("No se reconoce el dato");
+  }
+});
+
+//25. Pacientes que compraron el medicamento “Paracetamol” en 2023.
+
+//26. Total de medicamentos vendidos por mes en 2023.
+
+//27. Empleados con menos de 5 ventas en 2023.
+
+//28. Número total de proveedores que suministraron medicamentos en 2023.
+
+//29. Proveedores de los medicamentos con menos de 50 unidades en stock.
+
+//30. Pacientes que no han comprado ningún medicamento en 2023.
+
+//31. Medicamentos que han sido vendidos cada mes del año 2023.
+
+//32. Empleado que ha vendido la mayor cantidad de medicamentos distintos en 2023.
+
+//33. Total gastado por cada paciente en 2023.
+
+//34. Medicamentos que no han sido vendidos en 2023.
+
+//35. Proveedores que han suministrado al menos 5 medicamentos diferentes en 2023.
+
+//36. Total de medicamentos vendidos en el primer trimestre de 2023.
+
+//37. Empleados que no realizaron ventas en abril de 2023.
 
 //38. Medicamentos con un precio mayor a 50 y un stock menor a 100.
 

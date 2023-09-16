@@ -82,11 +82,11 @@ http://localhost:6000/test/ventas/ventasPorEmpleado/?count=5
 
 **21. Medicamentos que no han sido vendidos nunca.**
 
-
+http://localhost:6000/test/ventas/medicamentosSinVender/Never
 
 **22. Paciente que ha gastado más dinero en 2023.**
 
-
+http://localhost:6000/test/ventas/gastosPacientes/?ano=2023
 
 **23. Empleados que no han realizado ninguna venta en 2023.**
 
