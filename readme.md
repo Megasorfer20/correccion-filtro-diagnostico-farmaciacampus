@@ -70,15 +70,15 @@ http://localhost:6000/test/ventas/promedioMeds
 
 **18. Cantidad de ventas realizadas por cada empleado en 2023.**
 
-http://localhost:6000/test/ventas/ventasPorEmpleado
+http://localhost:6000/test/ventas/ventasPorEmpleadoAll/?ano=2023
 
 **19. Obtener todos los medicamentos que expiren en 2024.**
 
-http://localhost:6000/test/medicamentos/?fechaGlobal=2024
+http://localhost:6000/test/medicamentos/cadudidad/ByYear/?fechaGlobal=2024
 
 **20. Empleados que hayan hecho más de 5 ventas en total.**
 
-
+http://localhost:6000/test/ventas/ventasPorEmpleado/?count=5
 
 **21. Medicamentos que no han sido vendidos nunca.**
 
