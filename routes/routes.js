@@ -388,32 +388,253 @@ router.get("/compras/noVentas/actual", async (req, res) => {
 
 router.get("/ventas/fecha", async (req, res) => {
   try {
-    const { ano, mes } = req.query
+    const { ano, mes } = req.query;
 
-    const inicioMes = new Date(`${ano}-${mes}`)
-    const finMes = new Date(`${ano}-${mes}`)
-    finMes.setMonth(finMes.getMonth() + 1)
+    const inicioMes = new Date(`${ano}-${mes}`);
+    const finMes = new Date(`${ano}-${mes}`);
+    finMes.setMonth(finMes.getMonth() + 1);
 
     const client = new MongoClient(bases);
     await client.connect();
     const db = client.db(nombreBase);
     const colection = db.collection("Ventas");
 
-
-    const resultFecha = await colection.find({
-      fechaVenta: { $gte: inicioMes, $lt: finMes },
-    }).toArray()
-
-    let indexCount = 0
-    const result = resultFecha.map(ele=> {
-      ele.medicamentosVendidos.forEach(count =>{
-         indexCount += count.cantidadVendida
+    const resultFecha = await colection
+      .find({
+        fechaVenta: { $gte: inicioMes, $lt: finMes },
       })
-      return indexCount
-    })
+      .toArray();
+
+    let indexCount = 0;
+    const result = resultFecha.map((ele) => {
+      ele.medicamentosVendidos.forEach((count) => {
+        indexCount += count.cantidadVendida;
+      });
+      return indexCount;
+    });
 
     res.json({
-      CantidadVendida: result[0]
+      CantidadVendida: result[0],
+    });
+    client.close();
+  } catch (error) {
+    console.log(error);
+    res.status(404).json("No se reconoce el dato");
+  }
+});
+
+//15. Obtener el medicamento menos vendido en 2023.
+
+router.get("/ventas/menorVenta", async (req, res) => {
+  try {
+    const { ano } = req.query;
+
+    const anoActal = new Date(ano);
+    const anoLimite = new Date(ano);
+
+    anoLimite.setFullYear(anoLimite.getFullYear() + 1);
+
+    const client = new MongoClient(bases);
+    await client.connect();
+    const db = client.db(nombreBase);
+    const colection = db.collection("Ventas");
+
+      const result = await colection.aggregate([
+        {
+          $match: {
+            fechaVenta: { $gte: anoActal, $lt: anoLimite },
+          },
+        },
+        {
+          $unwind: "$medicamentosVendidos",
+        },
+        {
+          $group: {
+            _id: "$medicamentosVendidos.nombreMedicamento",
+            totalCantidadVendida: {
+              $sum: "$medicamentosVendidos.cantidadVendida",
+            },
+          },
+        },
+        {
+          $sort: {
+            totalCantidadVendida: -1,
+          },
+        },
+        {
+          $limit: 1,
+        },
+      ]).toArray();
+
+    res.json(result);
+    client.close();
+  } catch (error) {
+    console.log(error);
+    res.status(404).json("No se reconoce el dato");
+  }
+});
+
+//16. Ganancia total por proveedor en 2023 (asumiendo un campo precioCompra en Compras).
+
+router.get("/compras/ganciaProveedores", async (req, res) => {
+  try {
+    const { ano } = req.query;
+
+    const anoActal = new Date(ano);
+    const anoLimite = new Date(ano);
+
+    anoLimite.setFullYear(anoLimite.getFullYear() + 1);
+
+    const client = new MongoClient(bases);
+    await client.connect();
+    const db = client.db(nombreBase);
+    const colection = db.collection("Compras");
+
+      const result = await colection.aggregate([
+        {
+          $unwind: "$medicamentosComprados",
+        },
+        {
+          $group: {
+            _id: "$proveedor.nombre",
+            gananciasTotales: {
+              $sum: {
+                $multiply: ["$medicamentosComprados.cantidadComprada", "$medicamentosComprados.precioCompra"]
+              },
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            proveedor: "$_id",
+            gananciasTotales: 1
+          }
+        },
+      ]).toArray();
+
+    res.json(result);
+    client.close();
+  } catch (error) {
+    console.log(error);
+    res.status(404).json("No se reconoce el dato");
+  }
+});
+
+//17. Promedio de medicamentos comprados por venta.
+
+router.get("/ventas/promedioMeds", async (req, res) => {
+  try {
+    const client = new MongoClient(bases);
+    await client.connect();
+    const db = client.db(nombreBase);
+    const colection = db.collection("Ventas");
+
+      const result = await colection.aggregate([
+        {
+          $unwind: "$medicamentosVendidos",
+        },
+        {
+          $group: {
+            _id:0,
+            totalCantidadVendida: {
+              $sum: "$medicamentosVendidos.cantidadVendida",
+            },
+            conteo: {
+              $sum: 1
+            }
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            promedioDeVenta: {
+              $divide: ["$totalCantidadVendida", "$conteo"]
+            }
+          }
+        },
+      ]).toArray();
+
+    res.json(result);
+    client.close();
+  } catch (error) {
+    console.log(error);
+    res.status(404).json("No se reconoce el dato");
+  }
+});
+
+//18. Cantidad de ventas realizadas por cada empleado en 2023.
+
+router.get("/ventas/ventasPorEmpleado", async (req, res) => {
+  try {
+    const client = new MongoClient(bases);
+    await client.connect();
+    const db = client.db(nombreBase);
+    const colection = db.collection("Ventas");
+
+      const result = await colection.aggregate([
+        {
+          $unwind: "$medicamentosVendidos"
+        },
+        {
+          $group: {
+            _id: "$empleado.nombre",
+            ventasHechas: {
+              $sum: 
+                "$medicamentosVendidos.cantidadVendida"
+              ,
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            proveedor: "$_id",
+            ventasHechas: 1
+          }
+        },
+      ]).toArray();
+
+    res.json(result);
+    client.close();
+  } catch (error) {
+    console.log(error);
+    res.status(404).json("No se reconoce el dato");
+  }
+});
+
+router.get("/compras/totalVentasProv", async (req, res) => {
+  try {
+    const client = new MongoClient(bases);
+    await client.connect();
+    const db = client.db(nombreBase);
+    const colection = db.collection("Compras");
+
+    const projection = { "medicamentosComprados.cantidadComprada": 1 };
+
+    const resultA = await colection
+      .find({ "proveedor.nombre": "ProveedorA" })
+      .project(projection)
+      .toArray();
+    const resultB = await colection
+      .find({ "proveedor.nombre": "ProveedorB" })
+      .project(projection)
+      .toArray();
+    const resultC = await colection
+      .find({ "proveedor.nombre": "ProveedorC" })
+      .project(projection)
+      .toArray();
+
+    const sumatoria = (element) => {
+      return element.reduce((total, medicamento) => {
+        return total + medicamento.medicamentosComprados[0].cantidadComprada;
+      }, 0);
+    };
+
+    res.json({
+      ProveedorA: sumatoria(resultA),
+      ProveedorB: sumatoria(resultB),
+      ProveedorC: sumatoria(resultC),
     });
     client.close();
   } catch (error) {

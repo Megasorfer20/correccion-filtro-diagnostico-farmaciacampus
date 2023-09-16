@@ -58,19 +58,19 @@ http://localhost:6000/test/ventas/fecha/?ano=2023&mes=03
 
 **15. Obtener el medicamento menos vendido en 2023.**
 
-
+http://localhost:6000/test/ventas/menorVenta?ano=2023
 
 **16. Ganancia total por proveedor en 2023 (asumiendo un campo precioCompra en Compras).**
 
-
+http://localhost:6000/test/compras/ganciaProveedores
 
 **17. Promedio de medicamentos comprados por venta.**
 
-
+http://localhost:6000/test/ventas/promedioMeds
 
 **18. Cantidad de ventas realizadas por cada empleado en 2023.**
 
-
+http://localhost:6000/test/ventas/ventasPorEmpleado
 
 **19. Obtener todos los medicamentos que expiren en 2024.**
 
