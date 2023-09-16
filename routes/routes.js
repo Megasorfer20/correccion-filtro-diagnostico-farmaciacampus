@@ -153,30 +153,30 @@ router.get("/compras/totalVentasProv", async (req, res) => {
 
     const projection = { "medicamentosComprados.cantidadComprada": 1 };
 
-    const resultA = await colection
-      .find({ "proveedor.nombre": "ProveedorA" })
-      .project(projection)
-      .toArray();
-    const resultB = await colection
-      .find({ "proveedor.nombre": "ProveedorB" })
-      .project(projection)
-      .toArray();
-    const resultC = await colection
-      .find({ "proveedor.nombre": "ProveedorC" })
-      .project(projection)
+    const result = await colection
+      .aggregate([
+        {
+          $unwind: "$medicamentosComprados",
+        },
+        {
+          $group: {
+            _id: "$proveedor.nombre",
+            ventasHechas: {
+              $sum: "$medicamentosComprados.cantidadComprada",
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            proveedor: "$_id",
+            ventasHechas: 1,
+          },
+        },
+      ])
       .toArray();
 
-    const sumatoria = (element) => {
-      return element.reduce((total, medicamento) => {
-        return total + medicamento.medicamentosComprados[0].cantidadComprada;
-      }, 0);
-    };
-
-    res.json({
-      ProveedorA: sumatoria(resultA),
-      ProveedorB: sumatoria(resultB),
-      ProveedorC: sumatoria(resultC),
-    });
+    res.json(result);
     client.close();
   } catch (error) {
     console.log(error);
@@ -610,7 +610,7 @@ router.get("/ventas/ventasPorEmpleadoAll", async (req, res) => {
         {
           $project: {
             _id: 0,
-            proveedor: "$_id",
+            empleado: "$_id",
             ventasHechas: 1,
           },
         },
@@ -628,7 +628,7 @@ router.get("/ventas/ventasPorEmpleadoAll", async (req, res) => {
     empleados.forEach((element) => {
       element.ventasHechas = 0;
       ventasEmpleados.forEach((el) => {
-        if (el.proveedor === element.nombre) {
+        if (el.empleado === element.nombre) {
           element.ventasHechas = el.ventasHechas;
         }
       });
@@ -937,7 +937,7 @@ router.get("/compras/suministroProveedor", async (req, res) => {
 
 router.get("/ventas/mayorCompra", async (req, res) => {
   try {
-    const { ano,med } = req.query;
+    const { ano, med } = req.query;
 
     const anoActal = new Date(ano);
     const anoLimite = new Date(ano);
@@ -957,10 +957,9 @@ router.get("/ventas/mayorCompra", async (req, res) => {
         {
           $match: {
             fechaVenta: { $gte: anoActal, $lte: anoLimite },
-            "medicamentosVendidos.nombreMedicamento": med
-          }
+            "medicamentosVendidos.nombreMedicamento": med,
+          },
         },
-
       ])
       .toArray();
 
@@ -988,35 +987,37 @@ router.get("/ventas/totalVndidos/ByMonth", async (req, res) => {
     const db = client.db(nombreBase);
     const colection = db.collection("Ventas");
 
-    const result = await colection.aggregate([
-      {
-        $project: {
-          mes: { $month: "$fechaVenta" },
-          cantidadVendida: { $sum: "$medicamentosVendidos.cantidadVendida" }
-        }
-      },
-      {
-        $group: {
-          _id: "$mes",
-          totalCantidadVendida: { $sum: "$cantidadVendida" }
-        }
-      },
-      {
-        $sort: { _id: 1 }
-      },
-      {
-        $project: {
-          _id: 0,
-          mes: "$_id",
-          totalCantidadVendida: 1
-        }
-      }
-    ]).toArray();
+    const result = await colection
+      .aggregate([
+        {
+          $project: {
+            mes: { $month: "$fechaVenta" },
+            cantidadVendida: { $sum: "$medicamentosVendidos.cantidadVendida" },
+          },
+        },
+        {
+          $group: {
+            _id: "$mes",
+            totalCantidadVendida: { $sum: "$cantidadVendida" },
+          },
+        },
+        {
+          $sort: { _id: 1 },
+        },
+        {
+          $project: {
+            _id: 0,
+            mes: "$_id",
+            totalCantidadVendida: 1,
+          },
+        },
+      ])
+      .toArray();
 
-    result.forEach(el=>{
-      el.mes = new Date(`${ano}-${el.mes}`)
-      el.mes = el.mes.toLocaleString('default', { month: 'long' })
-    })
+    result.forEach((el) => {
+      el.mes = new Date(`${ano}-${el.mes}`);
+      el.mes = el.mes.toLocaleString("default", { month: "long" });
+    });
 
     res.json(result);
     client.close();
@@ -1028,15 +1029,15 @@ router.get("/ventas/totalVndidos/ByMonth", async (req, res) => {
 
 //27. Empleados con menos de 5 ventas en 2023.
 
-router.get("/ventas/ventasPorEmpleado", async (req, res) => {
+router.get("/ventas/ventasPorEmpleado/menosDe", async (req, res) => {
   try {
-    const { count ,ano } = req.query;
+    const { count, ano } = req.query;
 
     const anoActal = new Date(ano);
     const anoLimite = new Date(ano);
 
     anoLimite.setFullYear(anoLimite.getFullYear() + 1);
-    
+
     console.log(count);
     const client = new MongoClient(bases);
     await client.connect();
@@ -1046,7 +1047,11 @@ router.get("/ventas/ventasPorEmpleado", async (req, res) => {
 
     const vetnasEmpleados = await colection
       .aggregate([
-        {$match:{}},
+        {
+          $match: {
+            fechaVenta: { $gte: anoActal, $lt: anoLimite },
+          },
+        },
         {
           $unwind: "$medicamentosVendidos",
         },
@@ -1061,31 +1066,8 @@ router.get("/ventas/ventasPorEmpleado", async (req, res) => {
         {
           $project: {
             _id: 0,
-            proveedor: "$_id",
+            empleado: "$_id",
             ventasHechas: 1,
-          },
-        },
-      ])
-      .toArray();
-
-    const result = vetnasEmpleados.filter((element) => {
-      if (element.ventasHechas >= count) {
-        return element;
-      }
-    });
-
-
-
-    const empleadosConVentas = await colection
-      .aggregate([
-        {
-          $match: {
-            fechaVenta: { $gte: anoActal, $lt: anoLimite },
-          },
-        },
-        {
-          $group: {
-            _id: "$empleado.nombre",
           },
         },
       ])
@@ -1099,6 +1081,16 @@ router.get("/ventas/ventasPorEmpleado", async (req, res) => {
       })
       .toArray();
 
+    const result = empleados.filter((emple) => {
+      emple.ventasHechas = 0;
+      vetnasEmpleados.forEach((vent) => {
+        if (emple.nombre === vent.empleado) {
+          emple.ventasHechas = vent.ventasHechas;
+        }
+      });
+      return emple.ventasHechas <= count;
+    });
+
     res.json(result);
     client.close();
   } catch (error) {
@@ -1109,7 +1101,129 @@ router.get("/ventas/ventasPorEmpleado", async (req, res) => {
 
 //28. Número total de proveedores que suministraron medicamentos en 2023.
 
+router.get("/compras/conteoProveedores", async (req, res) => {
+  try {
+    const { ano } = req.query;
+
+    const anoActal = new Date(ano);
+    const anoLimite = new Date(ano);
+
+    anoLimite.setFullYear(anoLimite.getFullYear() + 1);
+
+    const client = new MongoClient(bases);
+    await client.connect();
+    const db = client.db(nombreBase);
+    const colection = db.collection("Compras");
+
+    const result = await colection
+      .aggregate([
+        {
+          $match: {
+            fechaCompra: { $gte: anoActal, $lt: anoLimite },
+          },
+        },
+        {
+          $unwind: "$medicamentosComprados",
+        },
+        {
+          $group: {
+            _id: "$proveedor.nombre",
+            ventasHechas: {
+              $sum: "$medicamentosComprados.cantidadComprada",
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            proveedor: "$_id",
+            ventasHechas: 1,
+          },
+        },
+      ])
+      .toArray();
+
+    res.json({ CantidadDeProveedores: result.length });
+    client.close();
+  } catch (error) {
+    console.log(error);
+    res.status(404).json("No se reconoce el dato");
+  }
+});
+
 //29. Proveedores de los medicamentos con menos de 50 unidades en stock.
+
+router.get("/compras/stockProveedor/menos", async (req, res) => {
+  try {
+    const { count } = req.query;
+
+    const client = new MongoClient(bases);
+    await client.connect();
+    const db = client.db(nombreBase);
+    const colection = db.collection("Compras");
+
+    const ventaProveedor = await colection
+      .aggregate([
+        {
+          $unwind: "$medicamentosComprados",
+        },
+        {
+          $group: {
+            _id: {
+              proveedor: "$proveedor.nombre",
+              medicamento: "$medicamentosComprados.nombreMedicamento",
+            },
+            cantidadVendida: {
+              $sum: "$medicamentosComprados.cantidadComprada",
+            },
+          },
+        },
+        {
+          $match: {
+            cantidadVendida: {
+              $lte: parseInt(count),
+            },
+          },
+        },
+        {
+          $group: {
+            _id: "$_id.proveedor",
+            medicamentosVendidos: {
+              $push: {
+                nombreMedicamento: "$_id.medicamento",
+                cantidadVendida: "$cantidadVendida",
+              },
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            proveedor: "$_id",
+            medicamentosVendidos: 1,
+          },
+        },
+      ])
+      .toArray();
+
+    const filtroMeds = ventaProveedor.map((proveedor) => ({
+      ...proveedor,
+      medicamentosVendidos: proveedor.medicamentosVendidos.filter(
+        (medicamento) => medicamento.cantidadVendida <= parseInt(count)
+      ),
+    }));
+
+    const result = filtroMeds.filter(
+      (proveedor) => proveedor.medicamentosVendidos.length > 0
+    );
+
+    res.json(result);
+    client.close();
+  } catch (error) {
+    console.log(error);
+    res.status(404).json("No se reconoce el dato");
+  }
+});
 
 //30. Pacientes que no han comprado ningún medicamento en 2023.
 

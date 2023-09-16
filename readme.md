@@ -106,15 +106,15 @@ http://localhost:6000/test/ventas/totalVndidos/ByMonth/?ano=2023
 
 **27. Empleados con menos de 5 ventas en 2023.**
 
-
+http://localhost:6000/test/ventas/ventasPorEmpleado/menosDe/?count=5&ano=2023
 
 **28. Número total de proveedores que suministraron medicamentos en 2023.**
 
-
+http://localhost:6000/test/compras/conteoProveedores?ano=2023
 
 **29. Proveedores de los medicamentos con menos de 50 unidades en stock.**
 
-
+http://localhost:6000/test/compras/stockProveedor/menos/?count=50
 
 **30. Pacientes que no han comprado ningún medicamento en 2023.**
 
