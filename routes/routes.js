@@ -935,9 +935,177 @@ router.get("/compras/suministroProveedor", async (req, res) => {
 
 //25. Pacientes que compraron el medicamento “Paracetamol” en 2023.
 
+router.get("/ventas/mayorCompra", async (req, res) => {
+  try {
+    const { ano,med } = req.query;
+
+    const anoActal = new Date(ano);
+    const anoLimite = new Date(ano);
+
+    anoLimite.setFullYear(anoLimite.getFullYear() + 1);
+
+    const client = new MongoClient(bases);
+    await client.connect();
+    const db = client.db(nombreBase);
+    const colection = db.collection("Ventas");
+
+    const result = await colection
+      .aggregate([
+        {
+          $unwind: "$medicamentosVendidos",
+        },
+        {
+          $match: {
+            fechaVenta: { $gte: anoActal, $lte: anoLimite },
+            "medicamentosVendidos.nombreMedicamento": med
+          }
+        },
+
+      ])
+      .toArray();
+
+    res.json(result);
+    client.close();
+  } catch (error) {
+    console.log(error);
+    res.status(404).json("No se reconoce el dato");
+  }
+});
+
 //26. Total de medicamentos vendidos por mes en 2023.
 
+router.get("/ventas/totalVndidos/ByMonth", async (req, res) => {
+  try {
+    const { ano } = req.query;
+
+    const anoActal = new Date(ano);
+    const anoLimite = new Date(ano);
+
+    anoLimite.setFullYear(anoLimite.getFullYear() + 1);
+
+    const client = new MongoClient(bases);
+    await client.connect();
+    const db = client.db(nombreBase);
+    const colection = db.collection("Ventas");
+
+    const result = await colection.aggregate([
+      {
+        $project: {
+          mes: { $month: "$fechaVenta" },
+          cantidadVendida: { $sum: "$medicamentosVendidos.cantidadVendida" }
+        }
+      },
+      {
+        $group: {
+          _id: "$mes",
+          totalCantidadVendida: { $sum: "$cantidadVendida" }
+        }
+      },
+      {
+        $sort: { _id: 1 }
+      },
+      {
+        $project: {
+          _id: 0,
+          mes: "$_id",
+          totalCantidadVendida: 1
+        }
+      }
+    ]).toArray();
+
+    result.forEach(el=>{
+      el.mes = new Date(`${ano}-${el.mes}`)
+      el.mes = el.mes.toLocaleString('default', { month: 'long' })
+    })
+
+    res.json(result);
+    client.close();
+  } catch (error) {
+    console.log(error);
+    res.status(404).json("No se reconoce el dato");
+  }
+});
+
 //27. Empleados con menos de 5 ventas en 2023.
+
+router.get("/ventas/ventasPorEmpleado", async (req, res) => {
+  try {
+    const { count ,ano } = req.query;
+
+    const anoActal = new Date(ano);
+    const anoLimite = new Date(ano);
+
+    anoLimite.setFullYear(anoLimite.getFullYear() + 1);
+    
+    console.log(count);
+    const client = new MongoClient(bases);
+    await client.connect();
+    const db = client.db(nombreBase);
+    const colection = db.collection("Ventas");
+    const colection2 = db.collection("Empleados");
+
+    const vetnasEmpleados = await colection
+      .aggregate([
+        {$match:{}},
+        {
+          $unwind: "$medicamentosVendidos",
+        },
+        {
+          $group: {
+            _id: "$empleado.nombre",
+            ventasHechas: {
+              $sum: "$medicamentosVendidos.cantidadVendida",
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            proveedor: "$_id",
+            ventasHechas: 1,
+          },
+        },
+      ])
+      .toArray();
+
+    const result = vetnasEmpleados.filter((element) => {
+      if (element.ventasHechas >= count) {
+        return element;
+      }
+    });
+
+
+
+    const empleadosConVentas = await colection
+      .aggregate([
+        {
+          $match: {
+            fechaVenta: { $gte: anoActal, $lt: anoLimite },
+          },
+        },
+        {
+          $group: {
+            _id: "$empleado.nombre",
+          },
+        },
+      ])
+      .toArray();
+
+    const empleados = await colection2
+      .find({})
+      .project({
+        _id: 0,
+        nombre: 1,
+      })
+      .toArray();
+
+    res.json(result);
+    client.close();
+  } catch (error) {
+    console.log(error);
+    res.status(404).json("No se reconoce el dato");
+  }
+});
 
 //28. Número total de proveedores que suministraron medicamentos en 2023.
 

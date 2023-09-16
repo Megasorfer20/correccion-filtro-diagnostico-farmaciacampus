@@ -90,19 +90,19 @@ http://localhost:6000/test/ventas/gastosPacientes/?ano=2023
 
 **23. Empleados que no han realizado ninguna venta en 2023.**
 
-
+http://localhost:6000/test/ventas/empleadosSinVentas/?ano=2023
 
 **24. Proveedor que ha suministrado más medicamentos en 2023.**
 
-
+http://localhost:6000/test/compras/suministroProveedor/?ano=2023
 
 **25. Pacientes que compraron el medicamento “Paracetamol” en 2023.**
 
-
+http://localhost:6000/test/ventas/mayorCompra/?ano=2023&med=Paracetamol
 
 **26. Total de medicamentos vendidos por mes en 2023.**
 
-
+http://localhost:6000/test/ventas/totalVndidos/ByMonth/?ano=2023
 
 **27. Empleados con menos de 5 ventas en 2023.**
 
