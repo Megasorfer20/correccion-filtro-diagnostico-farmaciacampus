@@ -122,7 +122,7 @@ http://localhost:6000/test/compras/stockProveedor/menos/?count=50
 
 **31. Medicamentos que han sido vendidos cada mes del año 2023.**
 
-
+http://localhost:6000/test/ventas/listaVendidos/ByMonth/?ano=2023
 
 **32. Empleado que ha vendido la mayor cantidad de medicamentos distintos en 2023.**
 

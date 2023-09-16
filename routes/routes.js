@@ -1229,6 +1229,76 @@ router.get("/compras/stockProveedor/menos", async (req, res) => {
 
 //31. Medicamentos que han sido vendidos cada mes del año 2023.
 
+router.get("/ventas/listaVendidos/ByMonth", async (req, res) => {
+  try {
+    const { ano } = req.query;
+
+    const anoActual = new Date(ano);
+    const anoLimite = new Date(ano);
+
+    anoLimite.setFullYear(anoLimite.getFullYear() + 1);
+
+    const client = new MongoClient(bases);
+    await client.connect();
+    const db = client.db(nombreBase);
+    const colection = db.collection("Ventas");
+
+    const result = await colection
+    .aggregate([
+      {
+        $match: {
+          fechaVenta: { $gte: anoActual, $lt: anoLimite },
+        },
+      },
+      {
+        $unwind: "$medicamentosVendidos",
+      },
+      {
+        $group: {
+          _id: {
+            mes: { $month: "$fechaVenta" },
+            nombreMedicamento: "$medicamentosVendidos.nombreMedicamento",
+          },
+          totalCantidadVendida: {
+            $sum: "$medicamentosVendidos.cantidadVendida",
+          },
+        },
+      },
+      {
+        $group: {
+          _id: "$_id.mes",
+          medicamentosVendidos: {
+            $push: {
+              nombreMedicamento: "$_id.nombreMedicamento",
+              cantidadVendida: "$totalCantidadVendida",
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          mes: "$_id",
+          medicamentosVendidos: 1,
+        },
+      },
+    ])
+    .toArray();
+
+    result.forEach((el) => {
+      el.mes = new Date(`${ano}-${el.mes}`);
+      const options = { month: "long" };
+      el.mes = el.mes.toLocaleString("es-ES", options);
+    });
+
+    res.json(result);
+    client.close();
+  } catch (error) {
+    console.log(error);
+    res.status(404).json("No se reconoce el dato");
+  }
+});
+
 //32. Empleado que ha vendido la mayor cantidad de medicamentos distintos en 2023.
 
 //33. Total gastado por cada paciente en 2023.
