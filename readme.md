@@ -118,7 +118,7 @@ http://localhost:6000/test/compras/stockProveedor/menos/?count=50
 
 **30. Pacientes que no han comprado ningún medicamento en 2023.**
 
-
+http://localhost:6000/test/ventas/pacientesSinCompras/?ano=2023
 
 **31. Medicamentos que han sido vendidos cada mes del año 2023.**
 
@@ -126,27 +126,27 @@ http://localhost:6000/test/ventas/listaVendidos/ByMonth/?ano=2023
 
 **32. Empleado que ha vendido la mayor cantidad de medicamentos distintos en 2023.**
 
-
+http://localhost:6000/test/ventas/medsByEmployee/max/?ano=2023
 
 **33. Total gastado por cada paciente en 2023.**
 
-
+http://localhost:6000/test/ventas/gastosPacientes/ByMonth?ano=2023
 
 **34. Medicamentos que no han sido vendidos en 2023.**
 
-
+http://localhost:6000/test/medicamentos/noVentas/ByYear/?ano=2023
 
 **35. Proveedores que han suministrado al menos 5 medicamentos diferentes en 2023.**
 
-
+http://localhost:6000/test/compras/proveedores/suministros/?ano=2023&minimun=5
 
 **36. Total de medicamentos vendidos en el primer trimestre de 2023.**
 
-
+http://localhost:6000/test/ventas/medicamentos/VentaTrimestre/?ano=2023&trimestre=1
 
 **37. Empleados que no realizaron ventas en abril de 2023.**
 
-
+http://localhost:6000/test/empleados/noVentas/?ano=2023&mes=4
 
 **38. Medicamentos con un precio mayor a 50 y un stock menor a 100.**
 
